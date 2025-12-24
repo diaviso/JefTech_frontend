@@ -1,35 +1,110 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { LoadingSpinner } from './components/LoadingSpinner';
+import LoginPage from './pages/LoginPage';
+import { AuthCallbackPage } from './pages/AuthCallbackPage';
+import ShopListPage from './pages/ShopListPage';
+import CreateShopPage from './pages/CreateShopPage';
+import ShopSettingsPage from './pages/ShopSettingsPage';
+import ShopDetailPage from './pages/ShopDetailPage';
+import JoinShopPage from './pages/JoinShopPage';
+import type { ReactNode } from 'react';
+import './index.css';
 
-function App() {
-  const [count, setCount] = useState(0)
+const queryClient = new QueryClient();
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
 }
 
-export default App
+function PublicRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/shops" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route
+        path="/"
+        element={
+          <PublicRoute>
+            <LoginPage />
+          </PublicRoute>
+        }
+      />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <Route path="/join/:code" element={<JoinShopPage />} />
+      <Route
+        path="/shops"
+        element={
+          <ProtectedRoute>
+            <ShopListPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shops/new"
+        element={
+          <ProtectedRoute>
+            <CreateShopPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shops/:id/settings"
+        element={
+          <ProtectedRoute>
+            <ShopSettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shops/:id"
+        element={
+          <ProtectedRoute>
+            <ShopDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </BrowserRouter>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;
